@@ -7,8 +7,10 @@ import lk.dimuthu.autohive.repository.SellerRepository;
 import lk.dimuthu.autohive.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -61,5 +63,27 @@ public class InquiryController {
 
         quoteRepository.save(quote);
         return ResponseEntity.ok("ඔබගේ මිල ගණන (Quote) සාර්ථකව ඉදිරිපත් කළා!");
+    }
+
+    // 3. පාරිභෝගිකයෙකුට තමන්ගේ ඉල්ලීම් (Inquiries) බලාගැනීමේ API එක
+    @GetMapping("/my-inquiries/{userId}")
+    public ResponseEntity<List<Inquiry>> getMyInquiries(@PathVariable String userId) {
+        List<Inquiry> myInquiries = inquiryRepository.findByUserId(userId);
+        return ResponseEntity.ok(myInquiries);
+    }
+
+    // 4. යම්කිසි Inquiry එකකට විකුණුම්කරුවන්ගෙන් ලැබුණු Quotes (මිල ගණන්) බලාගැනීමේ API එක
+    @GetMapping("/{inquiryId}/quotes")
+    public ResponseEntity<List<Quote>> getQuotesForInquiry(@PathVariable String inquiryId) {
+        List<Quote> quotes = quoteRepository.findByInquiryId(inquiryId);
+        return ResponseEntity.ok(quotes);
+    }
+
+    // 5. විකුණුම්කරුවන්ට සියලුම විවෘත ඉල්ලුම් (Open Inquiries) බලාගැනීමේ API එක
+    @GetMapping("/open-feed")
+    @PreAuthorize("hasAnyAuthority('seller', 'admin')") // මේකෙන් Seller ට විතරක් මේක සීමා කරනවා
+    public ResponseEntity<List<Inquiry>> getOpenInquiriesFeed() {
+        List<Inquiry> openInquiries = inquiryRepository.findByInquiryTypeAndStatus("open", "pending");
+        return ResponseEntity.ok(openInquiries);
     }
 }
