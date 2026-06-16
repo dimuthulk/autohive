@@ -6,41 +6,111 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "inquiries")
 public class Inquiry {
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(length = 36)
     private String id;
 
-    @Column(name = "user_id", length = 36, nullable = false)
-    private String userId;
+    // String userId වෙනුවට User object එක
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    // අදාළ වාහනය (විකල්ප)
+    @ManyToOne
+    @JoinColumn(name = "vehicle_id")
+    private Vehicle vehicle;
+
+    // අදාළ අමතර කොටසේ ප්‍රවර්ගය
+    @ManyToOne
+    @JoinColumn(name = "category_id")
+    private Category category;
 
     @Column(name = "inquiry_type")
-    private String inquiryType = "open"; // 'open' හෝ 'direct'
+    private String inquiryType = "open";
 
     @Column(name = "part_description", nullable = false, columnDefinition = "TEXT")
     private String partDescription;
 
-    private String status = "pending"; // 'pending', 'quoting', 'ordered', 'closed'
+    // අනාගතයේදී පින්තූරයක් දාන්න
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
+    private String status = "pending";
 
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    // Getters and Setters (අනිවාර්යයෙන්ම මේවා දාන්න)
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
+    public String getId() {
+        return id;
+    }
 
-    public String getUserId() { return userId; }
-    public void setUserId(String userId) { this.userId = userId; }
+    public void setId(String id) {
+        this.id = id;
+    }
 
-    public String getInquiryType() { return inquiryType; }
-    public void setInquiryType(String inquiryType) { this.inquiryType = inquiryType; }
+    public User getUser() {
+        return user;
+    }
 
-    public String getPartDescription() { return partDescription; }
-    public void setPartDescription(String partDescription) { this.partDescription = partDescription; }
+    public void setUser(User user) {
+        this.user = user;
+    }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public Vehicle getVehicle() {
+        return vehicle;
+    }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt;}
+    public void setVehicle(Vehicle vehicle) {
+        this.vehicle = vehicle;
+    }
+
+    public Category getCategory() {
+        return category;
+    }
+
+    public void setCategory(Category category) {
+        this.category = category;
+    }
+
+    public String getInquiryType() {
+        return inquiryType;
+    }
+
+    public void setInquiryType(String inquiryType) {
+        this.inquiryType = inquiryType;
+    }
+
+    public String getPartDescription() {
+        return partDescription;
+    }
+
+    public void setPartDescription(String partDescription) {
+        this.partDescription = partDescription;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
 }

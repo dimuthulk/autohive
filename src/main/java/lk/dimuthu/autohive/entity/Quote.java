@@ -1,4 +1,6 @@
 package lk.dimuthu.autohive.entity;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -11,11 +13,16 @@ public class Quote {
     @Column(length = 36)
     private String id;
 
-    @Column(name = "inquiry_id", length = 36, nullable = false)
-    private String inquiryId;
+    // String inquiryId වෙනුවට Inquiry object එක
+    @ManyToOne
+    @JoinColumn(name = "inquiry_id", nullable = false)
+    @JsonIgnore // JSON Response එකේදී Inquiry එක ආයේ load වෙන එක නවත්තනවා
+    private Inquiry inquiry;
 
-    @Column(name = "seller_id", length = 36, nullable = false)
-    private String sellerId;
+    // String sellerId වෙනුවට Seller object එක
+    @ManyToOne
+    @JoinColumn(name = "seller_id", nullable = false)
+    private Seller seller;
 
     @Column(nullable = false)
     private Double price;
@@ -26,22 +33,51 @@ public class Quote {
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    // Getters and Setters
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
+    public String getId() {
+        return id;
+    }
 
-    public String getInquiryId() { return inquiryId; }
-    public void setInquiryId(String inquiryId) { this.inquiryId = inquiryId; }
+    public void setId(String id) {
+        this.id = id;
+    }
 
-    public String getSellerId() { return sellerId; }
-    public void setSellerId(String sellerId) { this.sellerId = sellerId; }
+    public Inquiry getInquiry() {
+        return inquiry;
+    }
 
-    public Double getPrice() { return price; }
-    public void setPrice(Double price) { this.price = price; }
+    public void setInquiry(Inquiry inquiry) {
+        this.inquiry = inquiry;
+    }
 
-    public Integer getDeliveryTimeDays() { return deliveryTimeDays; }
-    public void setDeliveryTimeDays(Integer deliveryTimeDays) { this.deliveryTimeDays = deliveryTimeDays; }
+    public Seller getSeller() {
+        return seller;
+    }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public void setSeller(Seller seller) {
+        this.seller = seller;
+    }
+
+    public Double getPrice() {
+        return price;
+    }
+
+    public void setPrice(Double price) {
+        this.price = price;
+    }
+
+    public Integer getDeliveryTimeDays() {
+        return deliveryTimeDays;
+    }
+
+    public void setDeliveryTimeDays(Integer deliveryTimeDays) {
+        this.deliveryTimeDays = deliveryTimeDays;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
 }

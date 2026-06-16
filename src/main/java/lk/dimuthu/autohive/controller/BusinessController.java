@@ -1,7 +1,13 @@
 package lk.dimuthu.autohive.controller;
 
+import lk.dimuthu.autohive.dto.request.ProductRequest;
+import lk.dimuthu.autohive.dto.request.SellerRequest;
+import lk.dimuthu.autohive.dto.response.ProductResponse;
+import lk.dimuthu.autohive.entity.Category;
 import lk.dimuthu.autohive.entity.Product;
 import lk.dimuthu.autohive.entity.Seller;
+import lk.dimuthu.autohive.entity.User;
+import lk.dimuthu.autohive.repository.CategoryRepository;
 import lk.dimuthu.autohive.repository.ProductRepository;
 import lk.dimuthu.autohive.repository.SellerRepository;
 import lk.dimuthu.autohive.repository.UserRepository;
@@ -10,10 +16,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/business")
 public class BusinessController {
+
     @Autowired
     private SellerRepository sellerRepository;
 
@@ -23,41 +31,70 @@ public class BusinessController {
     @Autowired
     private ProductRepository productRepository;
 
-    // 1. Seller කෙනෙක් Register කිරීමේ API එක
+    @Autowired
+    private CategoryRepository categoryRepository;
+
     @PostMapping("/seller")
-    public ResponseEntity<String> registerSeller(@RequestBody Seller seller) {
-
-        // අදාළ User ID එක Database එකේ තියෙනවද කියලා බලනවා
-        if(!userRepository.existsById(seller.getUserId())){
-            return ResponseEntity.badRequest().body("Error: There is no user in the system with this User ID!");
+    public ResponseEntity<String> registerSeller(@RequestBody SellerRequest request) {
+        Optional<User> optionalUser = userRepository.findById(request.getUserId());
+        if(optionalUser.isEmpty()){
+            return ResponseEntity.badRequest().body("Error: මේ User ID එක වලංගු නැත!");
         }
 
-        // එක User කෙනෙක්ට හදන්න පුළුවන් එක කඩයයි
-        if(sellerRepository.existsByUserId(seller.getUserId())){
-            return ResponseEntity.badRequest().body("Error: This user is already registered as a seller!");
+        User user = optionalUser.get();
+
+        if(sellerRepository.existsByUser(user)){
+            return ResponseEntity.badRequest().body("Error: මේ පරිශීලකයා දැනටමත් විකුණුම්කරුවෙක් ලෙස ලියාපදිංචි වී ඇත!");
         }
+
+        Seller seller = new Seller();
+        seller.setUser(user);
+        seller.setBusinessName(request.getBusinessName());
 
         sellerRepository.save(seller);
-        return ResponseEntity.ok("Seller successfully registered!");
+        return ResponseEntity.ok("විකුණුම්කරු (Seller) සාර්ථකව ලියාපදිංචි වුණා!");
     }
 
-    // 2. අලුත් Product එකක් Add කිරීමේ API එක
     @PostMapping("/product")
-    public ResponseEntity<String> addProduct(@RequestBody Product product) {
-
-        // අදාළ Seller පද්ධතියේ ඉන්නවද කියලා බලනවා
-        if(!sellerRepository.existsById(product.getSellerId())){
+    public ResponseEntity<String> addProduct(@RequestBody ProductRequest request) {
+        Optional<Seller> optionalSeller = sellerRepository.findById(request.getSellerId());
+        if(optionalSeller.isEmpty()){
             return ResponseEntity.badRequest().body("Error: වැරදි Seller ID එකක්!");
+        }
+
+        Product product = new Product();
+        product.setSeller(optionalSeller.get());
+        product.setName(request.getName());
+        product.setBrand(request.getBrand());
+        product.setPrice(request.getPrice());
+        product.setStock(request.getStock()!= null? request.getStock() : 0);
+
+        if(request.getCategoryId()!= null) {
+            Optional<Category> optCat = categoryRepository.findById(request.getCategoryId());
+            optCat.ifPresent(product::setCategory);
         }
 
         productRepository.save(product);
         return ResponseEntity.ok("අලුත් භාණ්ඩය සාර්ථකව පද්ධතියට එකතු කළා!");
     }
 
-    // 3. පාරිභෝගිකයින්ට භාණ්ඩ සෙවීම සඳහා (Product Search API)
     @GetMapping("/product/search")
-    public ResponseEntity<List<Product>> searchProducts(@RequestParam String keyword) {
+    public ResponseEntity<List<ProductResponse>> searchProducts(@RequestParam String keyword) {
         List<Product> products = productRepository.findByNameContainingIgnoreCase(keyword);
-        return ResponseEntity.ok(products);
+
+        List<ProductResponse> responses = products.stream().map(p -> new ProductResponse(
+                p.getId(),
+                p.getSeller().getId(),
+                p.getSeller().getBusinessName(),
+                p.getCategory()!= null? p.getCategory().getId() : null,
+                p.getCategory()!= null? p.getCategory().getName() : null,
+                p.getName(),
+                p.getBrand(),
+                p.getPrice(),
+                p.getStock(),
+                p.getImageUrl()
+        )).toList();
+
+        return ResponseEntity.ok(responses);
     }
 }

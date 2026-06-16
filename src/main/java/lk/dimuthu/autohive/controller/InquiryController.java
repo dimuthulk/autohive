@@ -1,10 +1,11 @@
 package lk.dimuthu.autohive.controller;
-import lk.dimuthu.autohive.entity.Inquiry;
-import lk.dimuthu.autohive.entity.Quote;
-import lk.dimuthu.autohive.repository.InquiryRepository;
-import lk.dimuthu.autohive.repository.QuoteRepository;
-import lk.dimuthu.autohive.repository.SellerRepository;
-import lk.dimuthu.autohive.repository.UserRepository;
+
+import lk.dimuthu.autohive.dto.request.InquiryRequest;
+import lk.dimuthu.autohive.dto.request.QuoteRequest;
+import lk.dimuthu.autohive.dto.response.InquiryResponse;
+import lk.dimuthu.autohive.dto.response.QuoteResponse;
+import lk.dimuthu.autohive.entity.*;
+import lk.dimuthu.autohive.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,34 +30,55 @@ public class InquiryController {
     @Autowired
     private SellerRepository sellerRepository;
 
-    // 1. පාරිභෝගිකයෙකු නව ඉල්ලුමක් (Inquiry) දැමීම
-    @PostMapping("/create")
-    public ResponseEntity<String> createInquiry(@RequestBody Inquiry inquiry) {
+    @Autowired
+    private CategoryRepository categoryRepository;
 
-        // අදාළ පාරිභෝගිකයා පද්ධතියේ ඉන්නවද බලනවා
-        if(!userRepository.existsById(inquiry.getUserId())){
+    @Autowired
+    private VehicleRepository vehicleRepository;
+
+    @PostMapping("/create")
+    public ResponseEntity<String> createInquiry(@RequestBody InquiryRequest request) {
+        Optional<User> optionalUser = userRepository.findById(request.getUserId());
+        if(optionalUser.isEmpty()){
             return ResponseEntity.badRequest().body("Error: මේ User ID එක වලංගු නැත!");
         }
 
+        Inquiry inquiry = new Inquiry();
+        inquiry.setUser(optionalUser.get());
+        inquiry.setInquiryType(request.getInquiryType()!= null? request.getInquiryType() : "open");
+        inquiry.setPartDescription(request.getPartDescription());
+        inquiry.setImageUrl(request.getImageUrl());
         inquiry.setStatus("pending");
+
+        if(request.getCategoryId()!= null) {
+            categoryRepository.findById(request.getCategoryId()).ifPresent(inquiry::setCategory);
+        }
+        if(request.getVehicleId()!= null) {
+            vehicleRepository.findById(request.getVehicleId()).ifPresent(inquiry::setVehicle);
+        }
+
         inquiryRepository.save(inquiry);
-        return ResponseEntity.ok("ඔබගේ ඉල්ලුම සාර්ථකව පද්ධතියට එක් කළා. විකුණුම්කරුවන් ඉක්මනින් මිල ගණන් ලබා දේවි!");
+        return ResponseEntity.ok("ඔබගේ ඉල්ලුම සාර්ථකව පද්ධතියට එක් කළා!");
     }
 
-    // 2. විකුණුම්කරුවෙකු අදාළ Inquiry එකකට මිලක් (Quote) ඉදිරිපත් කිරීම
     @PostMapping("/quote")
-    public ResponseEntity<String> submitQuote(@RequestBody Quote quote) {
-
-        if(!sellerRepository.existsById(quote.getSellerId())){
+    public ResponseEntity<String> submitQuote(@RequestBody QuoteRequest request) {
+        Optional<Seller> optionalSeller = sellerRepository.findById(request.getSellerId());
+        if(optionalSeller.isEmpty()){
             return ResponseEntity.badRequest().body("Error: මේ Seller ID එක වලංගු නැත!");
         }
 
-        Optional<Inquiry> optionalInquiry = inquiryRepository.findById(quote.getInquiryId());
+        Optional<Inquiry> optionalInquiry = inquiryRepository.findById(request.getInquiryId());
         if(optionalInquiry.isEmpty()){
             return ResponseEntity.badRequest().body("Error: මේ Inquiry ID එක වලංගු නැත!");
         }
 
-        // පළමු වතාවට මිලක් ආපු ගමන්, අදාළ Inquiry එකේ status එක 'quoting' විදියට වෙනස් කරනවා
+        Quote quote = new Quote();
+        quote.setInquiry(optionalInquiry.get());
+        quote.setSeller(optionalSeller.get());
+        quote.setPrice(request.getPrice());
+        quote.setDeliveryTimeDays(request.getDeliveryTimeDays());
+
         Inquiry inquiry = optionalInquiry.get();
         inquiry.setStatus("quoting");
         inquiryRepository.save(inquiry);
@@ -65,25 +87,61 @@ public class InquiryController {
         return ResponseEntity.ok("ඔබගේ මිල ගණන (Quote) සාර්ථකව ඉදිරිපත් කළා!");
     }
 
-    // 3. පාරිභෝගිකයෙකුට තමන්ගේ ඉල්ලීම් (Inquiries) බලාගැනීමේ API එක
     @GetMapping("/my-inquiries/{userId}")
-    public ResponseEntity<List<Inquiry>> getMyInquiries(@PathVariable String userId) {
+    public ResponseEntity<List<InquiryResponse>> getMyInquiries(@PathVariable String userId) {
         List<Inquiry> myInquiries = inquiryRepository.findByUserId(userId);
-        return ResponseEntity.ok(myInquiries);
+
+        List<InquiryResponse> responses = myInquiries.stream().map(i -> new InquiryResponse(
+                i.getId(),
+                i.getUser().getId(),
+                i.getUser().getName(),
+                i.getVehicle()!= null? i.getVehicle().getMake() + " " + i.getVehicle().getModel() : "Not Specified",
+                i.getCategory()!= null? i.getCategory().getName() : "General",
+                i.getInquiryType(),
+                i.getPartDescription(),
+                i.getImageUrl(),
+                i.getStatus(),
+                i.getCreatedAt()
+        )).toList();
+
+        return ResponseEntity.ok(responses);
     }
 
-    // 4. යම්කිසි Inquiry එකකට විකුණුම්කරුවන්ගෙන් ලැබුණු Quotes (මිල ගණන්) බලාගැනීමේ API එක
     @GetMapping("/{inquiryId}/quotes")
-    public ResponseEntity<List<Quote>> getQuotesForInquiry(@PathVariable String inquiryId) {
+    public ResponseEntity<List<QuoteResponse>> getQuotesForInquiry(@PathVariable String inquiryId) {
         List<Quote> quotes = quoteRepository.findByInquiryId(inquiryId);
-        return ResponseEntity.ok(quotes);
+
+        List<QuoteResponse> responses = quotes.stream().map(q -> new QuoteResponse(
+                q.getId(),
+                q.getInquiry().getId(),
+                q.getSeller().getId(),
+                q.getSeller().getBusinessName(),
+                q.getPrice(),
+                q.getDeliveryTimeDays(),
+                q.getCreatedAt()
+        )).toList();
+
+        return ResponseEntity.ok(responses);
     }
 
-    // 5. විකුණුම්කරුවන්ට සියලුම විවෘත ඉල්ලුම් (Open Inquiries) බලාගැනීමේ API එක
     @GetMapping("/open-feed")
-    @PreAuthorize("hasAnyAuthority('seller', 'admin')") // මේකෙන් Seller ට විතරක් මේක සීමා කරනවා
-    public ResponseEntity<List<Inquiry>> getOpenInquiriesFeed() {
+    @PreAuthorize("hasAnyAuthority('seller', 'admin')")
+    public ResponseEntity<List<InquiryResponse>> getOpenInquiriesFeed() {
         List<Inquiry> openInquiries = inquiryRepository.findByInquiryTypeAndStatus("open", "pending");
-        return ResponseEntity.ok(openInquiries);
+
+        List<InquiryResponse> responses = openInquiries.stream().map(i -> new InquiryResponse(
+                i.getId(),
+                i.getUser().getId(),
+                i.getUser().getName(),
+                i.getVehicle()!= null? i.getVehicle().getMake() + " " + i.getVehicle().getModel() : "Not Specified",
+                i.getCategory()!= null? i.getCategory().getName() : "General",
+                i.getInquiryType(),
+                i.getPartDescription(),
+                i.getImageUrl(),
+                i.getStatus(),
+                i.getCreatedAt()
+        )).toList();
+
+        return ResponseEntity.ok(responses);
     }
 }

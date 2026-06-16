@@ -1,5 +1,8 @@
 package lk.dimuthu.autohive.controller;
 
+import lk.dimuthu.autohive.dto.request.LoginRequest;
+import lk.dimuthu.autohive.dto.request.RegisterRequest;
+import lk.dimuthu.autohive.dto.response.AuthResponse;
 import lk.dimuthu.autohive.entity.User;
 import lk.dimuthu.autohive.repository.UserRepository;
 import lk.dimuthu.autohive.util.JwtUtil;
@@ -8,8 +11,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -19,7 +20,6 @@ public class AuthController {
     @Autowired
     private UserRepository userRepository;
 
-    // අලුතින් එකතු කරපු Password Encoder එක
     @Autowired
     private PasswordEncoder passwordEncoder;
 
@@ -27,50 +27,42 @@ public class AuthController {
     private JwtUtil jwtUtil;
 
     @PostMapping("/register")
-    public ResponseEntity<String> registerUser(@RequestBody User user) {
+    public ResponseEntity<String> registerUser(@RequestBody RegisterRequest request) { // මෙතන Entity එක වෙනුවට DTO එක
 
-        // ඊමේල් එක කලින්ම පාවිච්චි කරලා තියෙනවද කියලා පරීක්ෂා කිරීම
-        if(userRepository.existsByEmail(user.getEmail())){
-            return ResponseEntity.badRequest().body("Error: This email is already registered!");
+        if(userRepository.existsByEmail(request.getEmail())){
+            return ResponseEntity.badRequest().body("Error: මේ ඊමේල් එක දැනටමත් ලියාපදිංචි කර ඇත!");
         }
 
-        // Password එක Hash කරලා ආයෙත් User Object එකටම සෙට් කිරීම
-        String hashedPassword = passwordEncoder.encode(user.getPasswordHash());
-        user.setPasswordHash(hashedPassword);
+        // DTO එකෙන් එන දත්ත අරගෙන සැබෑ User Entity එක හදනවා
+        User user = new User();
+        user.setName(request.getName());
+        user.setEmail(request.getEmail());
+        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        user.setRole(request.getRole());
 
-        // පරිශීලකයාව Database එකේ Save කිරීම
-        userRepository.save(user);
+        userRepository.save(user); // Entity එක Database එකට Save කරනවා
 
-        return ResponseEntity.ok("A user has successfully registered!");
+        return ResponseEntity.ok("User කෙනෙක් සාර්ථකව ලියාපදිංචි වුණා!");
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> loginUser(@RequestBody Map<String, String> payload) {
-        String email = payload.get("email");
-        String password = payload.get("password");
+    public ResponseEntity<?> loginUser(@RequestBody LoginRequest request) { // Map එක වෙනුවට DTO එක
 
-        // 1. ඊමේල් එක තියෙනවද බලනවා
-        Optional<User> optionalUser = userRepository.findByEmail(email);
+        Optional<User> optionalUser = userRepository.findByEmail(request.getEmail());
         if (optionalUser.isEmpty()) {
             return ResponseEntity.status(401).body("Error: පරිශීලකයා සොයාගත නොහැක!");
         }
 
         User user = optionalUser.get();
 
-        // 2. පාස්වර්ඩ් එක ගැලපෙනවද බලනවා
-        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             return ResponseEntity.status(401).body("Error: මුරපදය වැරදියි!");
         }
 
-        // 3. හැමදේම හරි නම් JWT Token එක හදනවා
         String token = jwtUtil.generateToken(user.getEmail(), user.getRole());
 
-        // 4. Token එකයි, User ගේ විස්තරයි JSON එකක් විදියට Response එකට යවනවා
-        Map<String, String> response = new HashMap<>();
-        response.put("token", token);
-        response.put("userId", user.getId());
-        response.put("name", user.getName());
-        response.put("role", user.getRole());
+        // Map එකක් යවනවා වෙනුවට අපි හදපු ලස්සන AuthResponse DTO එක යවනවා
+        AuthResponse response = new AuthResponse(token, user.getId(), user.getName(), user.getRole());
 
         return ResponseEntity.ok(response);
     }

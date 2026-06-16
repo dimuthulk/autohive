@@ -2,30 +2,34 @@ package lk.dimuthu.autohive.entity;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
-
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "orders")
 public class Order {
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(length = 36)
     private String id;
 
-    @Column(name = "inquiry_id", length = 36, nullable = false)
-    private String inquiryId;
+    @ManyToOne
+    @JoinColumn(name = "inquiry_id", nullable = false)
+    private Inquiry inquiry;
 
-    @Column(name = "quote_id", length = 36, nullable = false, unique = true)
-    private String quoteId;
+    @OneToOne
+    @JoinColumn(name = "quote_id", nullable = false, unique = true)
+    private Quote quote;
 
-    @Column(name = "buyer_id", length = 36, nullable = false)
-    private String buyerId;
+    @ManyToOne
+    @JoinColumn(name = "buyer_id", nullable = false)
+    private User buyer;
 
-    @Column(name = "seller_id", length = 36, nullable = false)
-    private String sellerId;
+    @ManyToOne
+    @JoinColumn(name = "seller_id", nullable = false)
+    private Seller seller;
 
-    private String status = "pending"; // 'pending', 'paid', 'shipped', 'delivered'
+    private String status = "pending";
 
     @Column(name = "total_amount", nullable = false)
     private Double totalAmount;
@@ -34,28 +38,67 @@ public class Order {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    // Getters and Setters
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
+    public String getId() {
+        return id;
+    }
 
-    public String getInquiryId() { return inquiryId; }
-    public void setInquiryId(String inquiryId) { this.inquiryId = inquiryId; }
+    public void setId(String id) {
+        this.id = id;
+    }
 
-    public String getQuoteId() { return quoteId; }
-    public void setQuoteId(String quoteId) { this.quoteId = quoteId; }
+    public Inquiry getInquiry() {
+        return inquiry;
+    }
 
-    public String getBuyerId() { return buyerId; }
-    public void setBuyerId(String buyerId) { this.buyerId = buyerId; }
+    public void setInquiry(Inquiry inquiry) {
+        this.inquiry = inquiry;
+    }
 
-    public String getSellerId() { return sellerId; }
-    public void setSellerId(String sellerId) { this.sellerId = sellerId; }
+    public Quote getQuote() {
+        return quote;
+    }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public void setQuote(Quote quote) {
+        this.quote = quote;
+    }
 
-    public Double getTotalAmount() { return totalAmount; }
-    public void setTotalAmount(Double totalAmount) { this.totalAmount = totalAmount; }
+    public User getBuyer() {
+        return buyer;
+    }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public void setBuyer(User buyer) {
+        this.buyer = buyer;
+    }
+
+    public Seller getSeller() {
+        return seller;
+    }
+
+    public void setSeller(Seller seller) {
+        this.seller = seller;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public Double getTotalAmount() {
+        return totalAmount;
+    }
+
+    public void setTotalAmount(Double totalAmount) {
+        this.totalAmount = totalAmount;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
 }
