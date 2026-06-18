@@ -12,8 +12,8 @@ public class Product {
     private String id;
 
     @ManyToOne
-    @JoinColumn(name = "seller_id", nullable = false)
-    private Seller seller;
+    @JoinColumn(name = "seller_id", nullable = false) // <-- Database එකේ හැදෙන column එකේ නම දෙන්නේ මෙතනයි
+    private Seller seller; // <-- mappedBy එකෙන් හොයන්නේ මෙන්න මේ variable එකේ නම ("seller")
 
     @ManyToOne
     @JoinColumn(name = "category_id")

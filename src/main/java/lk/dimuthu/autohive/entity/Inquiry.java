@@ -1,6 +1,8 @@
 package lk.dimuthu.autohive.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.CreationTimestamp;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -39,7 +41,8 @@ public class Inquiry {
 
     private String status = "pending";
 
-    @Column(name = "created_at", insertable = false, updatable = false)
+    @CreationTimestamp
+    @Column(name = "created_at",updatable = false)
     private LocalDateTime createdAt;
 
     public String getId() {

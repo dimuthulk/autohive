@@ -6,7 +6,7 @@ public class RegisterRequest {
     private String password;
     private String role;
 
-    // Getters and Setters අනිවාර්යයෙන්ම දාන්න
+    // Getters and Setters - These are mandatory for Spring to bind request data
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public String getEmail() { return email; }

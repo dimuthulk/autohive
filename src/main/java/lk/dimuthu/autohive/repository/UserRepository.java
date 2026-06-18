@@ -8,7 +8,9 @@ import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, String> {
-    // ඊමේල් එකක් දැනටමත් database එකේ තියෙනවද කියලා බලන්න මේක උදව් වෙනවා
+    // Checks whether an email already exists in the database
     boolean existsByEmail(String email);
+
+    // Retrieves a user by their email address, wrapped in an Optional to handle null cases
     Optional<User> findByEmail(String email);
 }

@@ -6,6 +6,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Column;
+import org.hibernate.annotations.CreationTimestamp;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -28,10 +30,10 @@ public class User {
     @Column(nullable = false)
     private String role; // 'customer', 'seller', 'admin'
 
-    @Column(name = "created_at", insertable = false, updatable = false)
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    // Getters and Setters (ඔයාට මේවා IntelliJ එකේ Right Click -> Generate -> Getters and Setters හරහා ලේසියෙන්ම දාගන්නත් පුළුවන්)
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
 

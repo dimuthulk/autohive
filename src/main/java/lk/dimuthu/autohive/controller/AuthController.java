@@ -27,41 +27,45 @@ public class AuthController {
     private JwtUtil jwtUtil;
 
     @PostMapping("/register")
-    public ResponseEntity<String> registerUser(@RequestBody RegisterRequest request) { // මෙතන Entity එක වෙනුවට DTO එක
+    public ResponseEntity<String> registerUser(@RequestBody RegisterRequest request) { // Using DTO instead of Entity directly
 
+        // Check if the email is already registered in the database
         if(userRepository.existsByEmail(request.getEmail())){
-            return ResponseEntity.badRequest().body("Error: මේ ඊමේල් එක දැනටමත් ලියාපදිංචි කර ඇත!");
+            return ResponseEntity.badRequest().body("Error: This email is already registered!");
         }
 
-        // DTO එකෙන් එන දත්ත අරගෙන සැබෑ User Entity එක හදනවා
+        // Extract data from the DTO and create a new User Entity
         User user = new User();
         user.setName(request.getName());
         user.setEmail(request.getEmail());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setRole(request.getRole());
 
-        userRepository.save(user); // Entity එක Database එකට Save කරනවා
+        userRepository.save(user); // Save the Entity to the Database
 
-        return ResponseEntity.ok("User කෙනෙක් සාර්ථකව ලියාපදිංචි වුණා!");
+        return ResponseEntity.ok("User registered successfully!");
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> loginUser(@RequestBody LoginRequest request) { // Map එක වෙනුවට DTO එක
+    public ResponseEntity<?> loginUser(@RequestBody LoginRequest request) { // Using DTO instead of Map
 
+        // Retrieve the user by email
         Optional<User> optionalUser = userRepository.findByEmail(request.getEmail());
         if (optionalUser.isEmpty()) {
-            return ResponseEntity.status(401).body("Error: පරිශීලකයා සොයාගත නොහැක!");
+            return ResponseEntity.status(401).body("Error: User not found!");
         }
 
         User user = optionalUser.get();
 
+        // Verify the provided password against the stored password hash
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            return ResponseEntity.status(401).body("Error: මුරපදය වැරදියි!");
+            return ResponseEntity.status(401).body("Error: Incorrect password!");
         }
 
+        // Generate a JWT token for the authenticated user
         String token = jwtUtil.generateToken(user.getEmail(), user.getRole());
 
-        // Map එකක් යවනවා වෙනුවට අපි හදපු ලස්සන AuthResponse DTO එක යවනවා
+        // Return a structured AuthResponse DTO instead of a plain Map
         AuthResponse response = new AuthResponse(token, user.getId(), user.getName(), user.getRole());
 
         return ResponseEntity.ok(response);
