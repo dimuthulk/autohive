@@ -73,9 +73,18 @@ public class InquiryController {
             return ResponseEntity.badRequest().body("Error: මේ Inquiry ID එක වලංගු නැත!");
         }
 
-        Quote quote = new Quote();
-        quote.setInquiry(optionalInquiry.get());
-        quote.setSeller(optionalSeller.get());
+        // කලින් Quote එකක් දාලද කියලා බලනවා
+        Optional<Quote> existingQuote = quoteRepository.findByInquiryIdAndSellerId(request.getInquiryId(), request.getSellerId());
+
+        Quote quote;
+        if (existingQuote.isPresent()) {
+            quote = existingQuote.get(); // කලින් දාලා නම් ඒක Update කරනවා (Edit Logic)
+        } else {
+            quote = new Quote(); // අලුත් එකක් නම් අලුතින් හදනවා
+            quote.setInquiry(optionalInquiry.get());
+            quote.setSeller(optionalSeller.get());
+        }
+
         quote.setPrice(request.getPrice());
         quote.setDeliveryTimeDays(request.getDeliveryTimeDays());
 
@@ -84,7 +93,23 @@ public class InquiryController {
         inquiryRepository.save(inquiry);
 
         quoteRepository.save(quote);
-        return ResponseEntity.ok("ඔබගේ මිල ගණන (Quote) සාර්ථකව ඉදිරිපත් කළා!");
+        return ResponseEntity.ok("ඔබගේ මිල ගණන (Quote) සාර්ථකව යාවත්කාලීන කළා!");
+    }
+
+    // Seller ගේ Quotes ටික ගන්න අලුත් Endpoint එක
+    @GetMapping("/seller-quotes/{sellerId}")
+    public ResponseEntity<List<QuoteResponse>> getQuotesBySeller(@PathVariable String sellerId) {
+        List<Quote> quotes = quoteRepository.findBySellerId(sellerId);
+        List<QuoteResponse> responses = quotes.stream().map(q -> new QuoteResponse(
+                q.getId(),
+                q.getInquiry().getId(),
+                q.getSeller().getId(),
+                q.getSeller().getBusinessName(),
+                q.getPrice(),
+                q.getDeliveryTimeDays(),
+                q.getCreatedAt()
+        )).toList();
+        return ResponseEntity.ok(responses);
     }
 
     @GetMapping("/my-inquiries/{userId}")
@@ -125,9 +150,15 @@ public class InquiryController {
     }
 
     @GetMapping("/open-feed")
-    @PreAuthorize("hasAnyAuthority('seller', 'admin')")
+    @PreAuthorize("hasAnyAuthority('seller', 'SELLER', 'admin', 'ADMIN')")
     public ResponseEntity<List<InquiryResponse>> getOpenInquiriesFeed() {
-        List<Inquiry> openInquiries = inquiryRepository.findByInquiryTypeAndStatus("open", "pending");
+
+        // කලින් තිබ්බ පේළිය වෙනුවට මේ අලුත් පේළිය දාන්න
+        // දැන් "pending" සහ "quoting" කියන දෙවර්ගයේම Inquiries ගන්නවා
+        List<Inquiry> openInquiries = inquiryRepository.findByInquiryTypeAndStatusIn(
+                "open",
+                java.util.Arrays.asList("pending", "quoting")
+        );
 
         List<InquiryResponse> responses = openInquiries.stream().map(i -> new InquiryResponse(
                 i.getId(),

@@ -3,12 +3,14 @@ package lk.dimuthu.autohive.controller;
 import lk.dimuthu.autohive.dto.request.OrderRequest;
 import lk.dimuthu.autohive.dto.request.OrderStatusUpdateRequest;
 import lk.dimuthu.autohive.dto.response.OrderResponse;
+import lk.dimuthu.autohive.dto.response.UnifiedOrderResponse;
 import lk.dimuthu.autohive.entity.*;
 import lk.dimuthu.autohive.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,6 +35,12 @@ public class OrderController {
 
     @Autowired
     private InquiryRepository inquiryRepository;
+
+    @Autowired
+    private DirectOrderRepository directOrderRepository;
+
+    @Autowired
+    private ProductRepository productRepository;
 
     /**
      * Places a new order based on a selected quote.
@@ -140,5 +148,116 @@ public class OrderController {
         )).toList();
 
         return ResponseEntity.ok(responses);
+    }
+
+    /**
+     * Seller කෙනෙක්ට තමන්ට ලැබුණු සියලුම Orders බලාගැනීම සඳහා.
+     */
+    @GetMapping("/seller-orders/{sellerId}")
+    public ResponseEntity<List<OrderResponse>> getSellerOrders(@PathVariable String sellerId) {
+        // Fetch all orders for the given seller ID
+        List<Order> sellerOrders = orderRepository.findBySellerId(sellerId);
+
+        // Convert each order entity to a response DTO
+        List<OrderResponse> responses = sellerOrders.stream().map(o -> new OrderResponse(
+                o.getId(),
+                o.getInquiry().getId(),
+                o.getInquiry().getPartDescription(),
+                o.getQuote().getId(),
+                o.getBuyer().getId(),
+                o.getBuyer().getName(), // මෙතනින් Customer ගේ නම ලැබෙනවා
+                o.getSeller().getId(),
+                o.getSeller().getBusinessName(),
+                o.getStatus(),
+                o.getTotalAmount(),
+                o.getCreatedAt()
+        )).toList();
+
+        return ResponseEntity.ok(responses);
+    }
+    // අලුත් Endpoint එක
+    @PostMapping("/place-product")
+    public ResponseEntity<String> placeProductOrder(@RequestBody OrderRequest request) {
+        Product product = productRepository.findById(request.getQuoteId()).orElseThrow();
+        User buyer = userRepository.findById(request.getBuyerId()).orElseThrow();
+
+        // අලුත් DirectOrder එක
+        DirectOrder order = new DirectOrder();
+        order.setProduct(product);
+        order.setBuyer(buyer);
+        order.setQuantity(1);
+        order.setTotalAmount(product.getPrice());
+        order.setStatus("pending");
+
+        directOrderRepository.save(order);
+
+        return ResponseEntity.ok("Direct order placed successfully!");
+    }
+
+    @GetMapping("/history/{buyerId}")
+    public ResponseEntity<List<UnifiedOrderResponse>> getOrderHistory(@PathVariable String buyerId) {
+        // 1. පරණ Orders ටික ගන්නවා
+        List<Order> oldOrders = orderRepository.findByBuyerId(buyerId);
+        List<UnifiedOrderResponse> history = oldOrders.stream().map(o ->
+                new UnifiedOrderResponse(
+                        o.getId(),
+                        o.getInquiry().getPartDescription().substring(0, Math.min(o.getInquiry().getPartDescription().length(), 20)) + "...",
+                        o.getTotalAmount(),
+                        o.getStatus(),
+                        "INQUIRY",
+                        o.getCreatedAt(),
+                        (o.getSeller() != null) ? o.getSeller().getBusinessName() : "N/A" // Seller name එක
+                )
+        ).toList();
+
+        // 2. අලුත් Direct Orders ටික ගන්නවා
+        List<DirectOrder> newOrders = directOrderRepository.findByBuyerId(buyerId);
+        List<UnifiedOrderResponse> directHistory = newOrders.stream().map(d ->
+                new UnifiedOrderResponse(
+                        d.getId(),
+                        d.getProduct().getName(),
+                        d.getTotalAmount(),
+                        d.getStatus(),
+                        "DIRECT",
+                        d.getCreatedAt(),
+                        (d.getProduct().getSeller() != null) ? d.getProduct().getSeller().getBusinessName() : "N/A" // Seller name එක
+                )
+        ).toList();
+
+        // 3. දෙකම එකතු කරනවා
+        List<UnifiedOrderResponse> allOrders = new ArrayList<>(history);
+        allOrders.addAll(directHistory);
+
+        return ResponseEntity.ok(allOrders);
+    }
+
+    @GetMapping("/seller-direct-orders/{sellerId}")
+    public ResponseEntity<List<DirectOrder>> getSellerDirectOrders(@PathVariable String sellerId) {
+        return ResponseEntity.ok(directOrderRepository.findByProductSellerId(sellerId));
+    }
+
+    // Direct Orders වල status එක update කරන්න අලුත් Endpoint එක
+    @PutMapping("/update-direct-status/{orderId}")
+    public ResponseEntity<String> updateDirectOrderStatus(
+            @PathVariable String orderId,
+            @RequestBody OrderStatusUpdateRequest request) {
+
+        Optional<DirectOrder> optionalOrder = directOrderRepository.findById(orderId);
+        if(optionalOrder.isEmpty()){
+            return ResponseEntity.badRequest().body("Error: Invalid Direct Order ID!");
+        }
+
+        DirectOrder order = optionalOrder.get();
+
+        // Seller ownership check (අපේ DirectOrder එකේ product -> seller සම්බන්ධතාවය තියෙන නිසා)
+        if(!order.getProduct().getSeller().getId().equals(request.getSellerId())){
+            return ResponseEntity.status(403).body("Error: You are not authorized to update this order!");
+        }
+
+        // Status update
+        order.setStatus(request.getStatus());
+        directOrderRepository.save(order);
+
+        return ResponseEntity.ok("Direct order status updated successfully!");
     }
 }

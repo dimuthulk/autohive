@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface SellerRatingRepository extends JpaRepository<SellerRating, String> {
 
@@ -16,4 +18,5 @@ public interface SellerRatingRepository extends JpaRepository<SellerRating, Stri
     // Calculate and retrieve the average rating value for a specific seller
     @Query("SELECT AVG(r.ratingValue) FROM SellerRating r WHERE r.seller.id = :sellerId")
     Double getAverageRatingForSeller(@Param("sellerId") String sellerId);
+    List<SellerRating> findBySellerId(String sellerId);
 }

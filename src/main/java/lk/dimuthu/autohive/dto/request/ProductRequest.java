@@ -8,7 +8,10 @@ public class ProductRequest {
     private Double price;
     private Integer stock;
 
-    // Getters and Setters
+    // අලුතින් එකතු කළ කොටස
+    private String imageUrl;
+
+    // පරණ Getters and Setters ටික...
     public String getSellerId() { return sellerId; }
     public void setSellerId(String sellerId) { this.sellerId = sellerId; }
     public String getCategoryId() { return categoryId; }
@@ -21,4 +24,8 @@ public class ProductRequest {
     public void setPrice(Double price) { this.price = price; }
     public Integer getStock() { return stock; }
     public void setStock(Integer stock) { this.stock = stock; }
+
+    // අලුතින් එකතු කළ Getter සහ Setter
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 }

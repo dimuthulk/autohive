@@ -13,4 +13,5 @@ public interface InquiryRepository extends JpaRepository<Inquiry, String> {
 
     // අලුතින් එකතු කරන එක: Open සහ Pending තත්ත්වයේ ඇති සියලුම ඉල්ලුම් ලබා ගැනීමට
     List<Inquiry> findByInquiryTypeAndStatus(String inquiryType, String status);
+    List<Inquiry> findByInquiryTypeAndStatusIn(String inquiryType, List<String> statuses);
 }

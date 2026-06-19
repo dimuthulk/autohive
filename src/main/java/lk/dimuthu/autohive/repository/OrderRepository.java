@@ -10,4 +10,5 @@ import java.util.List;
 public interface OrderRepository extends JpaRepository<Order, String> {
     // පාරිභෝගිකයාගේ ID එකෙන් ඔහුගේ සියලුම orders හොයාගන්න
     List<Order> findByBuyerId(String buyerId);
+    List<Order> findBySellerId(String sellerId);
 }

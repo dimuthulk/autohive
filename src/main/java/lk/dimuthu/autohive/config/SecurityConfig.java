@@ -9,60 +9,57 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-/**
- * Security Configuration class that sets up authentication and authorization
- * for the application using JWT (JSON Web Token) based authentication.
- *
- * This configuration:
- * 1. Defines password encoding strategy (BCrypt)
- * 2. Configures which endpoints are public vs protected
- * 3. Adds JWT authentication filter to the security chain
- */
+import java.util.Arrays;
+
 @Configuration
-@EnableMethodSecurity  // Enables method-level security annotations like @PreAuthorize
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Autowired
     private JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    /**
-     * Creates a password encoder bean for hashing user passwords.
-     * BCrypt is used for secure password storage with built-in salting.
-     *
-     * @return PasswordEncoder instance using BCrypt hashing algorithm
-     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    /**
-     * Configures the security filter chain that intercepts all HTTP requests.
-     *
-     * Security rules:
-     * - CSRF protection is disabled (stateless REST API)
-     * - Public endpoints (auth) are accessible without authentication
-     * - All other endpoints require a valid JWT token
-     * - JWT authentication filter is added before the default authentication
-     *
-     * @param http HttpSecurity object for configuring web security
-     * @return SecurityFilterChain configured with the security rules
-     * @throws Exception if configuration fails
-     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.csrf(csrf -> csrf.disable())  // Disable CSRF for stateless REST APIs
+        http.csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        // Public endpoints: Login and Register - anyone can access without a token
-                        .requestMatchers("/api/v1/auth/**").permitAll()
-                        // Protected endpoints: All other APIs (Inquiries, Orders, etc.) require valid JWT token
+                        // Categories සහ Product Search public කරමු
+                        .requestMatchers(
+                                "/api/v1/auth/**",
+                                "/api/v1/categories/all",
+                                "/api/v1/business/product/search"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
-                // Add our custom JWT filter to the Spring Security filter chain
-                // This filter intercepts requests and validates JWT tokens
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    // CORS වලට අදාල rules ටික මෙතන තියෙනවා
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        // Frontend එකේ URL එක මෙතන දෙන්න ඕන (Next.js default දුවන්නේ 3000 port එකේ)
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
+        // Allow කරන HTTP methods
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        // Allow කරන Headers (අපිට Authorization header එක අනිවාර්යයෙන් ඕන JWT යවන්න)
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept"));
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        // ඔක්කොම endpoints වලට මේ CORS rules අදාළ කරනවා
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 }

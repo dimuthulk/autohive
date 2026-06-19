@@ -36,7 +36,6 @@ public class BusinessController {
 
     @PostMapping("/seller")
     public ResponseEntity<String> registerSeller(@RequestBody SellerRequest request) {
-        // Validate that the user exists in the system
         Optional<User> optionalUser = userRepository.findById(request.getUserId());
         if(optionalUser.isEmpty()){
             return ResponseEntity.badRequest().body("Error: Invalid User ID!");
@@ -44,17 +43,20 @@ public class BusinessController {
 
         User user = optionalUser.get();
 
-        // Check if the user is already registered as a seller to prevent duplicate registration
         if(sellerRepository.existsByUser(user)){
             return ResponseEntity.badRequest().body("Error: This user is already registered as a seller!");
         }
 
-        // Create and save the new seller entity
+        // 1. Seller Profile එක හදනවා
         Seller seller = new Seller();
         seller.setUser(user);
         seller.setBusinessName(request.getBusinessName());
-
         sellerRepository.save(seller);
+
+        // 2. මෙන්න අලුතින් එකතු කරන කෑල්ල: User ගේ Role එක Update කිරීම
+        user.setRole("SELLER");
+        userRepository.save(user);
+
         return ResponseEntity.ok("Seller registered successfully!");
     }
 
@@ -72,7 +74,10 @@ public class BusinessController {
         product.setName(request.getName());
         product.setBrand(request.getBrand());
         product.setPrice(request.getPrice());
-        product.setStock(request.getStock()!= null? request.getStock() : 0); // Default stock to 0 if not provided
+        product.setStock(request.getStock()!= null? request.getStock() : 0);
+
+        // අලුතින් එකතු කළ කොටස
+        product.setImageUrl(request.getImageUrl());
 
         // Associate category if category ID is provided and exists
         if(request.getCategoryId()!= null) {
@@ -104,5 +109,32 @@ public class BusinessController {
         )).toList();
 
         return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/seller/user/{userId}")
+    public ResponseEntity<?> getSellerProfile(@PathVariable String userId) {
+        Optional<User> optionalUser = userRepository.findById(userId);
+        if (optionalUser.isEmpty()) {
+            return ResponseEntity.badRequest().body("Error: User not found!");
+        }
+
+        User user = optionalUser.get();
+
+        // SellerRepository එකේ මේ User ට අදාළ Seller කෙනෙක් ඉන්නවද බලනවා
+        // (මචං ඔයාගේ SellerRepository එකේ Optional<Seller> findByUser(User user); කියලා method එකක් නැත්නම් ඒක add කරන්න)
+        Optional<Seller> optionalSeller = sellerRepository.findByUser(user);
+
+        if (optionalSeller.isEmpty()) {
+            return ResponseEntity.status(404).body("Seller profile not found");
+        }
+
+        Seller seller = optionalSeller.get();
+
+        // StackOverflow (Infinite recursion) අවුල් එන එක නවත්තන්න කෙලින්ම Map එකක් යවනවා
+        java.util.Map<String, String> response = new java.util.HashMap<>();
+        response.put("sellerId", seller.getId());
+        response.put("businessName", seller.getBusinessName());
+
+        return ResponseEntity.ok(response);
     }
 }

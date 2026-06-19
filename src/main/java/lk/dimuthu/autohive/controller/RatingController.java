@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -65,6 +66,13 @@ public class RatingController {
         sellerRepository.save(seller);
 
         return ResponseEntity.ok("Your rating has been successfully recorded!");
+    }
+
+    // Seller ගේ Reviews ටික ඔක්කොම ගන්න (Seller සහ Admin ට බලන්න පුළුවන්)
+    @GetMapping("/seller/{sellerId}")
+    @PreAuthorize("hasAnyAuthority('seller', 'SELLER', 'admin', 'ADMIN')") // මේ line එක අනිවාර්යයෙන්ම දාන්න
+    public ResponseEntity<List<SellerRating>> getSellerRatings(@PathVariable String sellerId) {
+        return ResponseEntity.ok(ratingRepository.findBySellerId(sellerId));
     }
 }
 
